@@ -117,8 +117,10 @@ void CloneMetadata(const llvm::Instruction *i1, llvm::Instruction *i2)
         }
     }
 
-    assert(metadataI && "Did not find dbg in any instruction of a block");
-    i2->setDebugLoc(metadataI->getDebugLoc());
+    // A file may not have metadata (it is compiled without -g)
+    //assert(metadataI && "Did not find dbg in any instruction of a block");
+    if (metadataI)
+        i2->setDebugLoc(metadataI->getDebugLoc());
 }
 
 /**
