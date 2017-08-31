@@ -615,8 +615,8 @@ uint64_t getGlobalVarSize(GlobalVariable* GV, Module* M){
  * @param rw_config parsed rules to apply.
  * @return true if instrumentation of global variables was done without problems, false otherwise
  */
-bool InstrumentGlobals(Module& M, RewritePhase rw) {
-	GlobalVarsRule rw_globals = rw.getGlobalsConfig();
+bool InstrumentGlobals(Module& M, const RewritePhase& rw) {
+	const GlobalVarsRule& rw_globals = rw.getGlobalsConfig();
 
 	// If there is no rule for global variables, do not try to instrument
 	if(rw_globals.inFunction.empty() || rw_globals.globalVar.globalVariable.empty()) // TODO this is not very nice
@@ -667,9 +667,9 @@ bool InstrumentGlobals(Module& M, RewritePhase rw) {
  * @param rw_config set of rules
  * @return true if instrumented, false otherwise
  */
-bool InstrumentEntryPoint(Module &M, Function* F, RewriterConfig rw_config){
+bool InstrumentEntryPoint(Module &M, Function* F, const RewriterConfig& rw_config){
 	if(F->isDeclaration()) return true;
-	for (RewriteRule& rw : rw_config) {
+	for (const RewriteRule& rw : rw_config) {
 
 		// Check type of the rule
 		if(rw.where != InstrumentPlacement::ENTRY) continue;
@@ -709,8 +709,8 @@ bool InstrumentEntryPoint(Module &M, Function* F, RewriterConfig rw_config){
  * @param rw_config set fo rules
  * @return true if instrumented, false otherwise
  */
-bool InstrumentReturns(Module &M, Function* F, RewriterConfig rw_config){
-	for (RewriteRule& rw : rw_config) {
+bool InstrumentReturns(Module &M, Function* F, const RewriterConfig& rw_config){
+	for (const RewriteRule& rw : rw_config) {
 		
 		// Check type of the rule
 		if(rw.where != InstrumentPlacement::RETURN) continue;
@@ -748,11 +748,11 @@ bool InstrumentReturns(Module &M, Function* F, RewriterConfig rw_config){
  * @param rw parsed rules to apply.
  * @return true if instrumentation was done without problems, false otherwise
  */
-bool instrumentModule(Module &M, RewritePhase rw) {
+bool instrumentModule(Module &M, const RewritePhase& rw) {
 	// Instrument global variables
 	if(!InstrumentGlobals(M, rw)) return false;
 
-	RewriterConfig rw_config = rw.getConfig();
+	const RewriterConfig& rw_config = rw.getConfig();
 
 	// Instrument instructions in functions
 	for (Module::iterator Fiterator = M.begin(), E = M.end(); Fiterator != E; ++Fiterator) {
