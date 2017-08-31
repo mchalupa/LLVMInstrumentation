@@ -50,17 +50,41 @@ class RewriteRule {
 	std::list<std::string> condition;
 };
 
+
 typedef std::list<RewriteRule> RewriterConfig;
 
-// Rewriter
-class Rewriter {
+// One phase in instrumenting the module
+// -- bears information about what instructions should be
+// looked for and how to rewrite them
+class RewritePhase {
 	RewriterConfig config;
 	GlobalVarsRule globalVarsRule;
 	public:
-		RewriterConfig getConfig();
-		GlobalVarsRule getGlobalsConfig();
-		void parseConfig(std::ifstream &config_file);
-		std::list<std::string> analysisPaths;
+		const RewriterConfig& getConfig() const { return config; }
+		const GlobalVarsRule& getGlobalsConfig() const { return globalVarsRule; }
+		RewriterConfig& getConfig() { return config; }
+		GlobalVarsRule& getGlobalsConfig() { return globalVarsRule; }
+};
+
+// Rewriter
+class Rewriter {
+    // phases of instrumentation
+    std::list<RewritePhase> phases;
+
+    // paths to auxiliary analyses
+	std::list<std::string> analysisPaths;
+
+    public:
+        // parse a configuration file with rules in json
+	    void parseConfig(std::ifstream &config_file);
+
+        const std::list<std::string>& getAnalysisPaths() const {
+            return analysisPaths;
+        }
+
+        const std::list<RewritePhase>& getPhases() const {
+            return phases;
+        }
 };
 
 #endif

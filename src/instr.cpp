@@ -613,7 +613,7 @@ uint64_t getGlobalVarSize(GlobalVariable* GV, Module* M){
  * @param rw_config parsed rules to apply.
  * @return true if instrumentation of global variables was done without problems, false otherwise
  */
-bool InstrumentGlobals(Module& M, Rewriter rw) {
+bool InstrumentGlobals(Module& M, RewritePhase rw) {
 	GlobalVarsRule rw_globals = rw.getGlobalsConfig();
 
 	// If there is no rule for global variables, do not try to instrument
@@ -746,7 +746,7 @@ bool InstrumentReturns(Module &M, Function* F, RewriterConfig rw_config){
  * @param rw parsed rules to apply.
  * @return true if instrumentation was done without problems, false otherwise
  */
-bool instrumentModule(Module &M, Rewriter rw) {
+bool instrumentModule(Module &M, RewritePhase rw) {
 	// Instrument global variables
 	if(!InstrumentGlobals(M, rw)) return false;
 
@@ -791,7 +791,7 @@ bool instrumentModule(Module &M, Rewriter rw) {
  * @param module Module to be instrumented.
  */
 void loadPlugins(Rewriter rw, Module* module) {
-	for(const string& path : rw.analysisPaths) {
+	for(const string& path : rw.getAnalysisPaths()) {
 		auto plugin = Analyzer::analyze(path, module);
 		if (plugin)
 			plugins.push_back(std::move(plugin));
@@ -854,7 +854,16 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Instrument
-	bool resultOK = instrumentModule(*m, rw);
+    int n = 0;
+    bool resultOK = false;
+    for (const RewritePhase& rw_phase : rw.getPhases()) {
+        logger.write_info("-- starting phase " + std::to_string(n++) + " --");
+
+	    resultOK = instrumentModule(*m, rw_phase);
+        // break on any error
+        if (!resultOK)
+            break;
+    }
 
 	delete m;
 	config_file.close();
