@@ -792,7 +792,7 @@ bool instrumentModule(Module &M, const RewritePhase& rw) {
  * @param rw Rules from config file.
  * @param module Module to be instrumented.
  */
-void loadPlugins(Rewriter rw, Module* module) {
+void loadPlugins(const Rewriter& rw, Module* module) {
 	for(const string& path : rw.getAnalysisPaths()) {
 		auto plugin = Analyzer::analyze(path, module);
 		if (plugin)

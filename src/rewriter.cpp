@@ -19,12 +19,12 @@ static void getFindInstructions(RewriteRule& r, const Json::Value& instruction_r
 
         const auto& instruction_operands = instruction["operands"];
         for (uint j = 0; j < instruction_operands.size(); ++j) {
-            instr.parameters.emplace_back(instruction_operands[j].asString());
+            instr.parameters.push_back(instruction_operands[j].asString());
         }
 
         instr.getSizeTo = instruction["getSizeTo"].asString();
         instr.stripInboundsOffsets = instruction["stripInboundsOffsets"].asString();
-        r.foundInstrs.emplace_back(std::move(instr));
+        r.foundInstrs.push_back(std::move(instr));
     }
 }
 
@@ -36,7 +36,7 @@ static void getNewInstruction(RewriteRule& r, const Json::Value& instruction_rul
 
     const auto& new_instruction_operands = new_instruction["operands"];
     for (uint j = 0; j < new_instruction_operands.size(); ++j) {
-        r.newInstr.parameters.emplace_back(new_instruction_operands[j].asString());
+        r.newInstr.parameters.push_back(new_instruction_operands[j].asString());
     }
 
     const auto& instruction_placement = instruction_rules["where"];
@@ -60,7 +60,7 @@ static void getNewInstruction(RewriteRule& r, const Json::Value& instruction_rul
 
     const auto& instr_condition = instruction_rules["condition"];
     for(uint j = 0; j < instr_condition.size(); ++j){
-        r.condition.emplace_back(instr_condition[j].asString());
+        r.condition.push_back(instr_condition[j].asString());
     }
 }
 
@@ -94,7 +94,7 @@ static RewritePhase getPhase(const Json::Value& current_phase)
 
     const auto& gv_condition = global_variables_rule["condition"];
     for(uint j = 0; j < gv_condition.size(); ++j){
-        rw_globals_rule.condition.emplace_back(gv_condition[j].asString());
+        rw_globals_rule.condition.push_back(gv_condition[j].asString());
     }
 
     const auto& gv_new_instruction = global_variables_rule["newInstruction"];
@@ -103,7 +103,7 @@ static RewritePhase getPhase(const Json::Value& current_phase)
 
     const auto& gv_new_instruction_operands = gv_new_instruction["operands"];
     for (uint j = 0; j < gv_new_instruction_operands.size(); ++j) {
-        rw_globals_rule.newInstr.parameters.emplace_back(gv_new_instruction_operands[j].asString());
+        rw_globals_rule.newInstr.parameters.push_back(gv_new_instruction_operands[j].asString());
     }
 
     rw_globals_rule.inFunction = global_variables_rule["in"].asString();
@@ -140,7 +140,7 @@ void Rewriter::parseConfig(ifstream &config_file) {
 
         // load rewrite rules for instructions
         const auto& current_phase = config_phases[phase_idx];
-        phases.emplace_back(getPhase(current_phase));
+        phases.push_back(getPhase(current_phase));
     }
 }
 

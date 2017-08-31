@@ -59,7 +59,14 @@ typedef std::list<RewriteRule> RewriterConfig;
 class RewritePhase {
 	RewriterConfig config;
 	GlobalVarsRule globalVarsRule;
+
+    // forbid copying this object
+    RewritePhase(const RewritePhase&) = delete;
+
 	public:
+        RewritePhase() = default;
+        RewritePhase(RewritePhase&&) = default;
+
 		const RewriterConfig& getConfig() const { return config; }
 		const GlobalVarsRule& getGlobalsConfig() const { return globalVarsRule; }
 		RewriterConfig& getConfig() { return config; }
@@ -74,7 +81,12 @@ class Rewriter {
     // paths to auxiliary analyses
 	std::list<std::string> analysisPaths;
 
+    // forbid copying this object
+    Rewriter(const Rewriter&) = delete;
+
     public:
+        Rewriter() = default;
+
         // parse a configuration file with rules in json
 	    void parseConfig(std::ifstream &config_file);
 
