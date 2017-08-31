@@ -72,7 +72,8 @@
 					"operands": ["<t1>","<t2>","1", "__INSTR_remember_malloc_calloc"]
 				},
 				"where": "after",
-				"in": "*"
+				"in": "*",
+				"set" : ["ALLOCATED_ON_HEAP", true]
 				},
 				{
 				"findInstructions": [
@@ -104,7 +105,8 @@
 					"operands": ["<t1>","<t2>","1", "__INSTR_remember_malloc_calloc"]
 				},
 				"where": "after",
-				"in": "*"
+				"in": "*",
+				"set" : ["ALLOCATED_ON_HEAP", true]
 				},
 				{
 				"findInstructions": [
@@ -120,7 +122,8 @@
 					"operands": ["<t1>","<t2>","1", "__INSTR_remember_malloc_calloc"]
 				},
 				"where": "after",
-				"in": "*"
+				"in": "*",
+				"set" : ["ALLOCATED_ON_HEAP", true]
 				},
 				{
 				"findInstructions": [
@@ -136,7 +139,8 @@
 					"operands": ["<t1>","<t3>","<t2>", "__INSTR_remember_malloc_calloc"]
 				},
 				"where": "after",
-				"in": "*"
+				"in": "*",
+				"set" : ["ALLOCATED_ON_HEAP", true]
 				},
 				{
 				"findInstructions": [
@@ -152,7 +156,8 @@
 					"operands": ["<t1>","<t3>","<t2>", "__INSTR_remember_malloc_calloc"]
 				},
 				"where": "after",
-				"in": "*"
+				"in": "*",
+				"set" : ["ALLOCATED_ON_HEAP", true]
 				},
 				{
 				"findInstructions": [
@@ -168,7 +173,8 @@
 					"operands": ["<t1>","<t3>","<t2>", "__INSTR_remember_malloc_calloc"]
 				},
 				"where": "after",
-				"in": "*"
+				"in": "*",
+				"set" : ["ALLOCATED_ON_HEAP", true]
 				},
 				{
 				"findInstructions": [
@@ -236,22 +242,6 @@
 				},
 				"where": "before",
 				"in": "*"
-				},
-				{
-				"findInstructions": [
-				{
-					"returnValue": "*",
-					"instruction": "ret",
-					"operands": ["*"]
-				}
-				],
-				"newInstruction": {
-					"returnValue": "*",
-					"instruction": "call",
-					"operands": ["__INSTR_check_leaks"]
-				},
-				"where": "before",
-				"in": "main"
 				},
 				{
 				"findInstructions": [
@@ -493,40 +483,31 @@
 				"where": "before",
 				"in": "*"
 				}
-			//{
-			//	"findInstructions": [
-			//				{
-			//					"returnValue": "*",
-			//					"instruction": "call",
-			//					"operands": ["<t3>","*", "<t4>", "strncpy"]
-			//				}
-			//			   ],
-			//	"newInstruction": {
-			//				  "returnValue": "*",
-			//				  "instruction": "call",
-			//				  "operands": ["<t3>","<t4>", "__INSTR_check_pointer"],
-			//				  "stripInboundsOffsets": "<t3>"
-			//			  },
-			//	"where": "before",
-			//	"in": "*"
-			//},
-			//{
-			//	"findInstructions": [
-			//				{
-			//					"returnValue": "*",
-			//					"instruction": "call",
-			//					"operands": ["<t3>","<t4>", "strcpy"]
-			//				}
-			//			   ],
-			//	"newInstruction": {
-			//				  "returnValue": "*",
-			//				  "instruction": "call",
-			//				  "operands": ["<t3>","<t4>", "__INSTR_check_str_length"]
-			//			  },
-			//	"where": "before",
-			//	"in": "*"
-			//}
 			]
+		},
+		// the second phase in which we add a leak check if we remembered some
+		// memory allocated on heap
+		{
+			"instructionRules":
+				[
+				{
+				"findInstructions": [
+				{
+					"returnValue": "*",
+					"instruction": "ret",
+					"operands": ["*"]
+				}
+				],
+				"newInstruction": {
+					"returnValue": "*",
+					"instruction": "call",
+					"operands": ["__INSTR_check_leaks"]
+				},
+				"where": "before",
+				"in": "main",
+				"condition" : ["ALLOCATED_ON_HEAP", true]
+				}
+				]
 		}
 	]
 }

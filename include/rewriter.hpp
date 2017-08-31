@@ -2,6 +2,8 @@
 #define REWRITER_H
 
 #include <list>
+#include <map>
+#include <set>
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -48,6 +50,9 @@ class RewriteRule {
 	InstrumentPlacement where;
 	std::string inFunction;
 	std::list<std::string> condition;
+    // set a variable (the first of the pair)
+    // to given value (the second of the pair)
+    std::pair<std::string, std::string> set_variable;
 };
 
 
@@ -73,10 +78,48 @@ class RewritePhase {
 		GlobalVarsRule& getGlobalsConfig() { return globalVarsRule; }
 };
 
+class Environment {
+    using MappingT = std::map<const std::string, const std::string>;
+
+    MappingT environment;
+    // Set of known variables. It is not identical to keys
+    // of the environment, it is the set of variables
+    // that appear in configuration files. In the keys
+    // of environment mapping are only the set variables.
+    std::set<std::string> known_variables;
+
+public:
+    void addVariable(const std::string& var) {
+        known_variables.insert(var);
+    }
+
+    void setVariable(const std::string& var, const std::string& val) {
+        known_variables.insert(var);
+        environment.emplace(var, val);
+    }
+
+    bool isVariable(const std::string& var) const {
+        return known_variables.count(var) > 0;
+    }
+
+    const std::string& get(const std::string& var) const {
+        static std::string none;
+
+        auto it = environment.find(var);
+        if (it == environment.end())
+            return none;
+        return it->second;;
+    }
+};
+
 // Rewriter
 class Rewriter {
+
     // phases of instrumentation
     std::list<RewritePhase> phases;
+
+    // variables that may be set by phases
+    Environment environment;
 
     // paths to auxiliary analyses
 	std::list<std::string> analysisPaths;
@@ -96,6 +139,10 @@ class Rewriter {
 
         const std::list<RewritePhase>& getPhases() const {
             return phases;
+        }
+
+        Environment& getEnvironment() {
+            return environment;
         }
 };
 

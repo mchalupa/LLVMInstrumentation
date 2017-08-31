@@ -344,7 +344,8 @@ tuple<vector<Value *>, Instruction*> InsertArgument(InstrumentInstruction rw_new
  * @return 1 if error
  */
 int applyRule(Module &M, Instruction *currentInstr, RewriteRule rw_rule,
-	      const map <string, Value*>& variables, inst_iterator *Iiterator) {
+              const map <string, Value*>& variables,
+              Environment& env, inst_iterator *Iiterator) {
 	logger.write_info("Applying rule...");
 
 	// Work just with call instructions for now...
@@ -372,6 +373,10 @@ int applyRule(Module &M, Instruction *currentInstr, RewriteRule rw_rule,
 	// Insert new call instruction
 	InsertCallInstruction(CalleeF, args, rw_rule, get<1>(argsTuple), Iiterator);
 
+    if (rw_rule.set_variable.first != "") {
+        env.setVariable(rw_rule.set_variable.first, rw_rule.set_variable.second);
+    }
+
 	return 0;
 }
 
@@ -384,7 +389,7 @@ int applyRule(Module &M, Instruction *currentInstr, RewriteRule rw_rule,
  * @return 1 if error
  */
 int applyRule(Module &M, Instruction *currentInstr, InstrumentInstruction rw_newInstr,
-	      const map <string, Value*>& variables) {
+	          const map <string, Value*>& variables, Environment& env) {
 	logger.write_info("Applying rule for global variable...");
 
 	// Work just with call instructions for now...
@@ -462,32 +467,41 @@ bool CheckOperands(InstrumentInstruction rwIns, Instruction* ins, map <string, V
  * @param variables
  * @return true if condition is ok, false otherwise
  */
-bool checkAnalysis(list<string> condition, const map<string, Value*>& variables){
+bool checkAnalysis(const list<string>& condition,
+                   const map<string, Value*>& variables,
+                   const Environment& environment) {
 	// condition: first element is operator, other one or two elements
 	// are variables, TODO do we need more than two variables?
 	if(condition.empty())
 		return true;
 
-	string conditionOp = condition.front();
-	list<string>::iterator it = condition.begin();
-	it++;
-	string aName = *it;
-	string bName = "";
+	const string conditionOp = condition.front();
+    list<string>::const_iterator it = condition.begin();
+    // iterator to operands (initialized to the first operand)
+    it++;
 
-	Value* aValue = (variables.find(aName))->second;
-	Value* bValue = NULL;
-	if(condition.size()>2){
-		it++;
-		bName = *it;
-		bValue = (variables.find(bName))->second;
-	}
+    // is this only a condition involving a variable?
+    if (environment.isVariable(conditionOp)) {
+        return environment.get(conditionOp) == *it;
+    } else {
+        // check results from analyses
+        string bName = "";
 
-	for(auto& plugin : plugins){
-		if(!Analyzer::shouldInstrument(plugin.get(), conditionOp, aValue, bValue)){
-            // some plugin told us that we should not instrument
-			return false;
-		}
-	}
+        Value* aValue = (variables.find(*it))->second;
+        Value* bValue = NULL;
+        if(condition.size()>2){
+        	it++;
+        	bName = *it;
+        	bValue = (variables.find(bName))->second;
+        }
+
+        for(auto& plugin : plugins){
+        	if(!Analyzer::shouldInstrument(plugin.get(), conditionOp, aValue, bValue)){
+                // some plugin told us that we should not instrument
+        		return false;
+        	}
+        }
+    }
 
     // all analyses told that we should instrument
 	return true;
@@ -501,7 +515,9 @@ bool checkAnalysis(list<string> condition, const map<string, Value*>& variables)
  * @param Iiterator pointer to instructions iterator
  * @return true if OK, false otherwise
  */
-bool CheckInstruction(Instruction* ins, Module& M, Function* F, RewriterConfig rw_config, inst_iterator *Iiterator) {
+bool CheckInstruction(Instruction* ins, Module& M, Function* F,
+                      RewriterConfig rw_config, Environment& environment,
+                      inst_iterator *Iiterator) {
 	// iterate through rewrite rules
 	for (RewriteRule& rw : rw_config){
 		// check if this rule should be applied in this function
@@ -562,7 +578,7 @@ bool CheckInstruction(Instruction* ins, Module& M, Function* F, RewriterConfig r
 
 
 		// if all instructions match, try to instrument the code
-		if(instrument && checkAnalysis(rw.condition,variables)) {
+		if(instrument && checkAnalysis(rw.condition, variables, environment)) {
 			// try to apply rule
 			Instruction *where;
 			if(rw.where == InstrumentPlacement::BEFORE){
@@ -575,7 +591,7 @@ bool CheckInstruction(Instruction* ins, Module& M, Function* F, RewriterConfig r
 				where = currentInstr;
 			}
 
-			if(applyRule(M, where, rw, variables, Iiterator) == 1) {
+			if(applyRule(M, where, rw, variables, environment, Iiterator) == 1) {
 				logger.write_error("Cannot apply rule.");
 				return false;
 			}
@@ -615,7 +631,8 @@ uint64_t getGlobalVarSize(GlobalVariable* GV, Module* M){
  * @param rw_config parsed rules to apply.
  * @return true if instrumentation of global variables was done without problems, false otherwise
  */
-bool InstrumentGlobals(Module& M, const RewritePhase& rw) {
+bool InstrumentGlobals(Module& M, const RewritePhase& rw,
+                       Environment& environment) {
 	const GlobalVarsRule& rw_globals = rw.getGlobalsConfig();
 
 	// If there is no rule for global variables, do not try to instrument
@@ -645,11 +662,11 @@ bool InstrumentGlobals(Module& M, const RewritePhase& rw) {
 	      }
 
 	      // Try to instrument the code
-	      if(checkAnalysis(rw_globals.condition,variables)) {
+	      if(checkAnalysis(rw_globals.condition, variables, environment)) {
 		// Try to apply rule
 		inst_iterator IIterator = inst_begin(F);
 		Instruction *firstI = &*IIterator; //TODO
-		if(applyRule(M, firstI, rw_globals.newInstr, variables) == 1) {
+		if(applyRule(M, firstI, rw_globals.newInstr, variables, environment) == 1) {
 		  logger.write_error("Cannot apply rule.");
 		  return false;
 		}
@@ -748,9 +765,10 @@ bool InstrumentReturns(Module &M, Function* F, const RewriterConfig& rw_config){
  * @param rw parsed rules to apply.
  * @return true if instrumentation was done without problems, false otherwise
  */
-bool instrumentModule(Module &M, const RewritePhase& rw) {
+bool instrumentModule(Module &M, const RewritePhase& rw,
+                      Environment& environment) {
 	// Instrument global variables
-	if(!InstrumentGlobals(M, rw)) return false;
+	if(!InstrumentGlobals(M, rw, environment)) return false;
 
 	const RewriterConfig& rw_config = rw.getConfig();
 
@@ -773,7 +791,8 @@ bool instrumentModule(Module &M, const RewritePhase& rw) {
 			// This iterator may be replaced (by an iterator to the following
 			// instruction) in the InsertCallInstruction function
 			// Check if the instruction is relevant
-			if(!CheckInstruction(&*Iiterator, M, &*Fiterator, rw_config, &Iiterator)) return false;
+			if(!CheckInstruction(&*Iiterator, M, &*Fiterator,
+                                 rw_config, environment, &Iiterator)) return false;
 		}
 	}
 	// Write instrumented module into the output file
@@ -861,7 +880,7 @@ int main(int argc, char *argv[]) {
     for (const RewritePhase& rw_phase : rw.getPhases()) {
         logger.write_info("-- starting phase " + std::to_string(n++) + " --");
 
-	    resultOK = instrumentModule(*m, rw_phase);
+	    resultOK = instrumentModule(*m, rw_phase, rw.getEnvironment());
         // break on any error
         if (!resultOK)
             break;

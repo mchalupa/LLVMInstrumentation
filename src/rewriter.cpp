@@ -28,7 +28,7 @@ static void getFindInstructions(RewriteRule& r, const Json::Value& instruction_r
     }
 }
 
-static void getNewInstruction(RewriteRule& r, const Json::Value& instruction_rules)
+static void getNewInstruction(RewriteRule& r, const Json::Value& instruction_rules, Environment& env)
 {
     const auto& new_instruction = instruction_rules["newInstruction"];
     r.newInstr.returnValue = new_instruction["returnValue"].asString();
@@ -58,13 +58,20 @@ static void getNewInstruction(RewriteRule& r, const Json::Value& instruction_rul
 
     r.inFunction = instruction_rules["in"].asString();
 
+    if (instruction_rules.isMember("set")) {
+        const auto& set_var = instruction_rules["set"];
+        r.set_variable
+            = std::make_pair(set_var[0].asString(), set_var[1].asString());
+        env.addVariable(r.set_variable.first);
+    }
+
     const auto& instr_condition = instruction_rules["condition"];
     for(uint j = 0; j < instr_condition.size(); ++j){
         r.condition.push_back(instr_condition[j].asString());
     }
 }
 
-static RewritePhase getPhase(const Json::Value& current_phase)
+static RewritePhase getPhase(const Json::Value& current_phase, Environment& env)
 {
     RewritePhase phase;
 
@@ -77,7 +84,7 @@ static RewritePhase getPhase(const Json::Value& current_phase)
         const auto& current_instruction_rules = instruction_rules[i];
 
         getFindInstructions(r, current_instruction_rules);
-        getNewInstruction(r, current_instruction_rules);
+        getNewInstruction(r, current_instruction_rules, env);
 
         phase.getConfig().emplace_back(std::move(r));
     }
@@ -140,7 +147,7 @@ void Rewriter::parseConfig(ifstream &config_file) {
 
         // load rewrite rules for instructions
         const auto& current_phase = config_phases[phase_idx];
-        phases.push_back(getPhase(current_phase));
+        phases.push_back(getPhase(current_phase, environment));
     }
 }
 
