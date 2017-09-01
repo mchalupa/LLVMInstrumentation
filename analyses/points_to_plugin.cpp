@@ -171,9 +171,9 @@ class PointsToPlugin : public InstrPlugin
     }
 
     PointsToPlugin(llvm::Module* module)
-    : PTA(std::unique_ptr<dg::LLVMPointerAnalysis>(new dg::LLVMPointerAnalysis(module))),
+    : InstrPlugin("pointer-analysis"),
+      PTA(std::unique_ptr<dg::LLVMPointerAnalysis>(new dg::LLVMPointerAnalysis(module))),
       cg(*module, PTA) {
-        llvm::errs() << "Running points-to analysis...\n";
         PTA->run<dg::analysis::pta::PointsToFlowInsensitive>();
         cg.compute();
     }

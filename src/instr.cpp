@@ -814,8 +814,11 @@ bool instrumentModule(Module &M, const RewritePhase& rw,
 void loadPlugins(const Rewriter& rw, Module* module) {
 	for(const string& path : rw.getAnalysisPaths()) {
 		auto plugin = Analyzer::analyze(path, module);
-		if (plugin)
+		if (plugin) {
+            logger.write_info("Loaded plugin: " + plugin->getName() +
+                              "(" + path + ")\n");
 			plugins.push_back(std::move(plugin));
+        }
 		else
 			cout <<"Failed loading plugin: " << path << endl;
 	}
