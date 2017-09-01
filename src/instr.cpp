@@ -759,6 +759,35 @@ bool InstrumentReturns(Module &M, Function* F, const RewriterConfig& rw_config){
 	return true;
 }
 
+bool instrumentFunction(Module& M, llvm::Function& F, const RewritePhase& rw,
+                        Environment& environment) {
+
+    // Do not instrument functions linked for instrumentation
+    const auto& functionName = F.getName();
+    
+    if(functionName.startswith("__INSTR_") ||
+       functionName.startswith("__VERIFIER_")) {
+    	//logger.write_info("Omitting function " + functionName + " from instrumentation.");
+    	return true;
+    }
+    
+	const RewriterConfig& rw_config = rw.getConfig();
+
+    if(!InstrumentEntryPoint(M, &F, rw_config)) return false;
+    if(!InstrumentReturns(M, &F, rw_config)) return false;
+    
+    for (inst_iterator Iiterator = inst_begin(&F),
+         End = inst_end(&F); Iiterator != End; ++Iiterator) {
+    	// This iterator may be replaced (by an iterator to the following
+    	// instruction) in the InsertCallInstruction function
+    	// Check if the instruction is relevant
+    	if(!CheckInstruction(&*Iiterator, M, &F,
+                             rw_config, environment, &Iiterator)) return false;
+    }
+
+    return true;
+}
+
 /**
  * Instruments given module with rules from json file.
  * @param M module to be instrumented.
@@ -770,31 +799,12 @@ bool instrumentModule(Module &M, const RewritePhase& rw,
 	// Instrument global variables
 	if(!InstrumentGlobals(M, rw, environment)) return false;
 
-	const RewriterConfig& rw_config = rw.getConfig();
-
 	// Instrument instructions in functions
 	for (Module::iterator Fiterator = M.begin(), E = M.end(); Fiterator != E; ++Fiterator) {
-
-		// Do not instrument functions linked for instrumentation
-		string functionName = (&*Fiterator)->getName().str();
-
-		if(functionName.find("__INSTR_")!=string::npos ||
-		   functionName.find("__VERIFIER_")!=string::npos) { //TODO just starts with
-			logger.write_info("Omitting function " + functionName + " from instrumentation.");
-			continue;
-		}
-	
-		if(!InstrumentEntryPoint(M, &*Fiterator, rw_config)) return false;
-		if(!InstrumentReturns(M, &*Fiterator, rw_config)) return false;
-
-		for (inst_iterator Iiterator = inst_begin(&*Fiterator), End = inst_end(&*Fiterator); Iiterator != End; ++Iiterator) {
-			// This iterator may be replaced (by an iterator to the following
-			// instruction) in the InsertCallInstruction function
-			// Check if the instruction is relevant
-			if(!CheckInstruction(&*Iiterator, M, &*Fiterator,
-                                 rw_config, environment, &Iiterator)) return false;
-		}
+        if (!instrumentFunction(M, *Fiterator, rw, environment))
+            return false;
 	}
+
 	// Write instrumented module into the output file
 	ofstream out_file;
 	out_file.open(outputName, ios::out | ios::binary);
