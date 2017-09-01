@@ -11,7 +11,8 @@ class PointsToPlugin : public InstrPlugin
 {
      private:
         std::unique_ptr<dg::LLVMPointerAnalysis> PTA;
-        
+        CallGraph cg;
+
      public:
      bool isNull(llvm::Value* a) {
          if (!a->getType()->isPointerTy())
@@ -90,7 +91,6 @@ class PointsToPlugin : public InstrPlugin
                 if(llvm::Instruction *Iptr = llvm::dyn_cast<llvm::Instruction>(ptr.target->getUserData<llvm::Value>())) {
                     llvm::Function *F = I->getParent()->getParent();
                     //if (Iptr->getParent()->getParent() != F || !F->doesNotRecurse()) {
-                    CallGraph cg(*(I->getModule()), PTA);
                     if(Iptr->getParent()->getParent() != F || cg.isRecursive(F)){
                         return false;
                     }
@@ -170,10 +170,12 @@ class PointsToPlugin : public InstrPlugin
         return true;
     }
 
-    PointsToPlugin(llvm::Module* module) {
+    PointsToPlugin(llvm::Module* module)
+    : PTA(std::unique_ptr<dg::LLVMPointerAnalysis>(new dg::LLVMPointerAnalysis(module))),
+      cg(*module, PTA) {
         llvm::errs() << "Running points-to analysis...\n";
-        PTA = std::unique_ptr<dg::LLVMPointerAnalysis>(new dg::LLVMPointerAnalysis(module));
         PTA->run<dg::analysis::pta::PointsToFlowInsensitive>();
+        cg.compute();
     }
 };
 
