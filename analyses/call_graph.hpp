@@ -2,6 +2,7 @@
 #define CALLGRAPH_H
 
 #include <map>
+#include <set>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instruction.h>
 #include "llvm/analysis/PointsTo/PointsTo.h"
@@ -30,11 +31,13 @@ class CallGraph {
 		bool containsDirectCall(const llvm::Function* caller, const llvm::Function* callee);
 		bool isRecursive(const llvm::Function* function);
 
+        std::set<const llvm::Function *> getReachableFunctions(const llvm::Function *start) const;
+
 	private:
 		int lastId;
 		void handleCallInst(std::unique_ptr<dg::LLVMPointerAnalysis> &PTA, const llvm::Function *F, const llvm::CallInst *CI);
 		bool BFS(const CGNode startNode, std::vector<bool> &visited);
-		int findNode(const llvm::Function* function);
+		int findNode(const llvm::Function* function) const;
 
         llvm::Module& M;
         std::unique_ptr<dg::LLVMPointerAnalysis>& PTA;

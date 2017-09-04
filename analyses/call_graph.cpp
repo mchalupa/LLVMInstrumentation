@@ -64,7 +64,7 @@ void CallGraph::compute() {
 	}
 }
 
-int CallGraph::findNode(const Function* function) {
+int CallGraph::findNode(const Function* function) const {
 	for(auto& node : nodes) {
 		if(node.getCaller() == function) {
 			return node.getId();
@@ -158,4 +158,31 @@ void CallGraph::handleCallInst(std::unique_ptr<dg::LLVMPointerAnalysis> &PTA, co
 	}
 }
 
+std::set<const Function *>
+CallGraph::getReachableFunctions(const Function *start) const {
+    std::set<const Function *> result;
+    result.insert(start);
+
+    bool changed = false;
+    CGNode *start_node = findNode(start);
+    std::vector<CGNode *> to_process;
+    std::vector<CGNode *> new_nodes;
+
+    to_process.push_back(start_node);
+
+    while (!to_process.empty()) {
+        for (CGNode *cur : to_process) {
+            for (int succ : cur->calls) {
+                const Function *succ_F = nodes[succ].caller;
+
+                if (result.insert(succ_F).second)
+                    new_nodes.push_back(succ_F);
+            }
+        }
+
+        new_nodes.swap(to_process);
+    }
+
+    return result;
+}
 

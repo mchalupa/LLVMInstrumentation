@@ -799,7 +799,8 @@ bool instrumentModule(Module &M, const RewritePhase& rw,
 	// Instrument global variables
 	if(!InstrumentGlobals(M, rw, environment)) return false;
 
-	// Instrument instructions in functions
+	// Instrument instructions in functions. If we have a callgraph available,
+    // instrument only those that are reachable from main
 	for (Module::iterator Fiterator = M.begin(), E = M.end(); Fiterator != E; ++Fiterator) {
         if (!instrumentFunction(M, *Fiterator, rw, environment))
             return false;
